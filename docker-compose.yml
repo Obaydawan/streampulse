@@ -1,0 +1,37 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: streampulse-redpanda
+
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=768M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://localhost:9092
+      - --pandaproxy-addr=PLAINTEXT://0.0.0.0:8082
+      - --advertise-pandaproxy-addr=PLAINTEXT://localhost:8082
+
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+      - "9644:9644"
+
+    volumes:
+      - ./redpanda-data:/var/lib/redpanda/data
+
+    mem_limit: 1g
+    cpus: 1.0
+
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    restart: on-failure
