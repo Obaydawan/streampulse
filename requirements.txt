@@ -1,0 +1,9 @@
+# ==========================
+# Core Runtime Dependencies
+# ==========================
+
+confluent-kafka==2.11.1
+duckdb==1.4.0
+faker==37.5.3
+python-dotenv==1.1.1
+pandas==2.3.1
