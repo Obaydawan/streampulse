@@ -54,3 +54,22 @@ Before assuming Git has a problem:
 - Use `git ls-files` to confirm which files are already tracked.
 
 Avoid making assumptions—verify with Git's own tools first.
+
+## Session — Phase 1 Complete (Redpanda + Producer)
+
+**Problem:** Redpanda container was restart-looping on startup.
+**Cause:** Bind-mounted `redpanda-data/` directory had root ownership; Redpanda runs as a non-root container user and got a Permission Denied error writing its pid file.
+**Solution:** Recreated the directory and `chmod 777`'d it (local dev only — would use proper UID ownership in production).
+**Lesson:** Bind-mounted volumes need explicit permission handling for non-root containers; don't assume default directory permissions will work.
+
+**Problem:** `rpk topic create --config retention.ms=...` silently didn't apply the override — topic came up with the 7-day cluster default instead.
+**Cause:** The `--config` flag on `topic create` doesn't behave as expected in this Redpanda version/setup for `retention.ms`.
+**Solution:** Used `rpk topic alter-config` after creation instead, and verified `SOURCE` changed to `DYNAMIC_TOPIC_CONFIG` to confirm it actually took effect.
+**Lesson:** Never trust a config flag silently — always verify with `describe` that the value AND its source are what you expect, not just that the command exited 0.
+
+**Problem:** Producer script threw `ModuleNotFoundError: No module named 'shared'` when run directly.
+**Cause:** Running `python producer/produce_orders.py` puts the `producer/` folder itself on the import path, not the project root, so sibling package `shared/` wasn't visible.
+**Solution:** Added `producer/__init__.py` and ran the script as a module from the project root: `python -m producer.produce_orders`.
+**Lesson:** Multi-package Python projects should be run with `-m` from the root, not as bare scripts from inside a subfolder.
+
+**Result:** Producer verified working — controlled bursts via `--max-events`/`--duration`, graceful Ctrl+C shutdown with full flush, idempotent delivery confirmed, events landing correctly in the `orders` topic with 48h retention.
