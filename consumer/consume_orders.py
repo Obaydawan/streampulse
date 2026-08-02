@@ -3,16 +3,12 @@ StreamPulse — Order Event Consumer
 
 Reads order events from the Redpanda 'orders' topic, validates them, and
 lands them into a local DuckDB bronze table with idempotent inserts keyed
-on order_id.
+on order_id. Invalid events are sent to the orders_dlq topic AND logged
+into a DuckDB rejected_events table for easy querying later.
 
 Delivery guarantee: at-least-once. Kafka offsets are committed only AFTER
-a successful DuckDB insert, so a crash mid-write causes re-delivery (not
-data loss) — and re-delivery is made harmless by the ON CONFLICT DO
-NOTHING insert, not by trying to achieve true exactly-once.
-
-Run in short bursts, per hardware constraints — never run indefinitely.
-Controlled by --max-events and/or --duration; whichever limit is hit
-first stops the run. If neither is passed, defaults to 500 events.
+a successful DuckDB insert, so a crash mid-write causes re-delivery, not
+data loss — made harmless by ON CONFLICT DO NOTHING.
 
 Usage:
     python -m consumer.consume_orders --max-events 200
@@ -28,7 +24,7 @@ import time
 from datetime import datetime, timezone
 
 import duckdb
-from confluent_kafka import Consumer, KafkaError
+from confluent_kafka import Consumer, Producer, KafkaError
 from dotenv import load_dotenv
 
 from shared.logging_config import get_logger
@@ -39,6 +35,7 @@ logger = get_logger(__name__)
 
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC_NAME = os.getenv("TOPIC_NAME", "orders")
+DLQ_TOPIC_NAME = os.getenv("DLQ_TOPIC_NAME", "orders_dlq")
 DUCKDB_PATH = os.getenv("DUCKDB_PATH", "data/orders.duckdb")
 
 REQUIRED_FIELDS = [
@@ -122,7 +119,21 @@ def insert_event(con, event, partition, offset):
     )
 
 
-def reject_event(con, raw_value, reason, partition, offset):
+def dlq_delivery_report(err, msg):
+    if err is not None:
+        logger.error(f"Failed to deliver to DLQ: {err}")
+
+
+def handle_rejected_event(con, dlq_producer, raw_value, reason, partition, offset):
+    """Single place for rejection handling: DLQ publish + DuckDB log + warning."""
+    dlq_producer.produce(
+        topic=DLQ_TOPIC_NAME,
+        value=raw_value.encode("utf-8"),
+        headers={"reason": reason.encode("utf-8")},
+        callback=dlq_delivery_report,
+    )
+    dlq_producer.poll(0)
+
     con.execute(
         """
         INSERT INTO rejected_events (raw_value, reason, rejected_at, source_partition, source_offset)
@@ -130,6 +141,8 @@ def reject_event(con, raw_value, reason, partition, offset):
         """,
         [raw_value, reason, datetime.now(timezone.utc), partition, offset],
     )
+
+    logger.warning(f"Rejected event at offset {offset}: {reason}")
 
 
 def build_consumer():
@@ -142,12 +155,17 @@ def build_consumer():
     return Consumer(conf)
 
 
+def build_dlq_producer():
+    return Producer({"bootstrap.servers": BOOTSTRAP_SERVERS, "client.id": "streampulse-dlq-producer"})
+
+
 def run(max_events, duration):
     os.makedirs(os.path.dirname(DUCKDB_PATH), exist_ok=True)
     con = duckdb.connect(DUCKDB_PATH)
     init_db(con)
 
     consumer = build_consumer()
+    dlq_producer = build_dlq_producer()
     consumer.subscribe([TOPIC_NAME])
     signal.signal(signal.SIGINT, _handle_sigint)
 
@@ -156,7 +174,7 @@ def run(max_events, duration):
     events_rejected = 0
 
     logger.info(
-        f"Starting consumer — topic='{TOPIC_NAME}' "
+        f"Starting consumer — topic='{TOPIC_NAME}' dlq='{DLQ_TOPIC_NAME}' "
         f"max_events={max_events} duration={duration}"
     )
 
@@ -190,15 +208,14 @@ def run(max_events, duration):
             try:
                 event = json.loads(raw_value)
             except json.JSONDecodeError:
-                reject_event(con, raw_value, "invalid_json", msg.partition(), msg.offset())
+                handle_rejected_event(con, dlq_producer, raw_value, "invalid_json", msg.partition(), msg.offset())
                 events_rejected += 1
                 consumer.commit(msg)
                 continue
 
             reason = validate_event(event)
             if reason is not None:
-                logger.warning(f"Rejected event at offset {msg.offset()}: {reason}")
-                reject_event(con, raw_value, reason, msg.partition(), msg.offset())
+                handle_rejected_event(con, dlq_producer, raw_value, reason, msg.partition(), msg.offset())
                 events_rejected += 1
                 consumer.commit(msg)
                 continue
@@ -210,6 +227,7 @@ def run(max_events, duration):
             logger.info(f"Landed order_id={event['order_id']} (offset {msg.offset()})")
 
     finally:
+        dlq_producer.flush(5)
         consumer.close()
         con.close()
         logger.info(
