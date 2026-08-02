@@ -73,3 +73,15 @@ Avoid making assumptions—verify with Git's own tools first.
 **Lesson:** Multi-package Python projects should be run with `-m` from the root, not as bare scripts from inside a subfolder.
 
 **Result:** Producer verified working — controlled bursts via `--max-events`/`--duration`, graceful Ctrl+C shutdown with full flush, idempotent delivery confirmed, events landing correctly in the `orders` topic with 48h retention.
+
+## Session — Phase 2.1 Complete (Consumer + DLQ)
+
+**Problem:** Needed to verify the consumer actually processes events correctly, not just that it compiles.
+**Solution:** Ran it against real topic data — 34 valid events landed correctly in DuckDB `bronze_orders` via idempotent `ON CONFLICT DO NOTHING` inserts, offsets committed only after successful writes.
+**Lesson:** "Compiles cleanly" and "works correctly" are different bars — always run against real data before calling a component done.
+
+**Problem:** Needed to verify the rejection path (DLQ + rejected_events table) actually triggers on bad data.
+**Solution:** Manually produced one deliberately invalid event (negative price) directly into the topic via `rpk topic produce`, then confirmed it was correctly rejected, published to `orders_dlq` with a `reason` header, and logged into the `rejected_events` DuckDB table.
+**Lesson:** `docker exec -it` fails when piping stdin via heredoc (`<<<`) because `-t` allocates a TTY that conflicts with piped input — use `-i` only, not `-it`, when piping data into a container command.
+
+**Result:** Consumer verified end-to-end — valid events land correctly, invalid events are caught by schema validation and routed to both the DLQ topic and a queryable DuckDB table, offset-commit-after-write guarantees at-least-once delivery with idempotent inserts making duplicates harmless.
