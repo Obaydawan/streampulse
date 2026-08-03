@@ -85,3 +85,18 @@ Avoid making assumptions—verify with Git's own tools first.
 **Lesson:** `docker exec -it` fails when piping stdin via heredoc (`<<<`) because `-t` allocates a TTY that conflicts with piped input — use `-i` only, not `-it`, when piping data into a container command.
 
 **Result:** Consumer verified end-to-end — valid events land correctly, invalid events are caught by schema validation and routed to both the DLQ topic and a queryable DuckDB table, offset-commit-after-write guarantees at-least-once delivery with idempotent inserts making duplicates harmless.
+
+## Session — Phase 2.4 Complete (First Public Deployment)
+
+**Problem:** Streamlit Cloud build hung indefinitely at dependency installation, no clear error in logs.
+**Cause:** Cloud environment defaulted to Python 3.14.6 (very new), and pinned packages like pandas/duckdb likely lacked prebuilt wheels for that version, forcing a slow/stuck source compile on the free-tier build machine.
+**Solution:** Deleted and redeployed with Python 3.12 explicitly selected in Advanced Settings — matched the version the dependencies were actually tested against. Build completed in under a minute.
+**Lesson:** Cloud platforms may default to a newer Python version than your local dev environment. Always check for a Python version override option when a build silently hangs during dependency install, rather than assuming it's a network or resource problem.
+
+**Problem:** Also fixed — Streamlit Cloud building the FULL project requirements.txt (including confluent-kafka, unused by the dashboard) caused unnecessary slow builds.
+**Solution:** Added a scoped `streamlit_app/requirements.txt` containing only what app.py actually imports (streamlit, duckdb, python-dotenv, pandas). Streamlit Cloud prioritizes a requirements.txt in the same folder as the main app file.
+**Lesson:** Don't make a deployment install dependencies the deployed code doesn't use — scope requirements files per-component in a multi-part project.
+
+**Result:** First public deployment live and working correctly. Confirms the deployment pipeline itself (GitHub → Streamlit Cloud → live app) functions end-to-end. App correctly shows a "no database" message rather than crashing, since the cloud environment has no access to the local DuckDB file yet — an architecture gap to be addressed in a later phase, not a bug in this one.
+
+**Live URL:** https://streampulse.streamlit.app/

@@ -25,3 +25,12 @@ A real-time streaming data engineering project built to simulate an e-commerce o
 ## Project Status
 
 🚧 Week 1 – Repository setup in progress.
+
+## Live Deployment
+
+🔗 **[streampulse.streamlit.app](https://streampulse.streamlit.app/)**
+
+Note: the deployed dashboard currently shows a "no database found" message
+by design — the streaming pipeline runs locally and hasn't been connected
+to a shared cloud data store yet. This confirms the deployment pipeline
+itself works correctly; connecting live data is planned for a later phase.
