@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: alerts
+    columns:
+      - name: alert_id
+        tests:
+          - not_null
+          - unique
+      - name: severity
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['info', 'warning']
+      - name: alert_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['data_quality', 'high_value_order', 'region_spike']

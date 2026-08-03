@@ -2,10 +2,10 @@
 
 ## Current Status
 
-**Phase:** 2.4 – First Public Deployment (Complete)
+**Phase:** 3.2 – dbt Silver Layer + Alerts Panel (Complete)
 
-Producer, Redpanda, consumer, and a minimal Streamlit dashboard are all
-verified working. The dashboard is publicly deployed.
+Full local pipeline verified end-to-end, including anomaly/data-quality
+alerting surfaced in the dashboard.
 
 **Live app:** https://streampulse.streamlit.app/
 
@@ -13,17 +13,16 @@ verified working. The dashboard is publicly deployed.
 
 ## Implemented
 
-- Git repository
-- Project folder structure
-- Environment template (`.env.example`)
+- Git repository, folder structure, environment template
 - Docker Compose configuration for Redpanda (running, memory-capped at 1G)
 - `orders` topic (48h retention) and `orders_dlq` topic (48h retention)
 - Python producer publishing synthetic order events
 - Python consumer landing valid events into DuckDB (`bronze_orders`), idempotent on `order_id`
-- Invalid-event handling: schema validation, routed to both `orders_dlq` (with reason header) and DuckDB `rejected_events` table
-- Minimal Streamlit dashboard (row counts, recent orders, rejected events)
+- Invalid-event handling: `orders_dlq` topic + DuckDB `rejected_events` table
+- dbt project: `stg_orders` (staging view), `silver_orders` (materialized table, derived `order_total`)
+- dbt `alerts` model: unified data_quality + high_value_order + region_spike detection, all fields tested
+- Streamlit dashboard: metrics, color-coded Alerts panel, recent orders from silver layer
 - Public deployment on Streamlit Community Cloud
-- Documentation structure
 
 ---
 
@@ -43,7 +42,14 @@ verified working. The dashboard is publicly deployed.
   (DuckDB)        + rejected_events (DuckDB)
       │
       ▼
-  Streamlit Dashboard (local: shows live data)
+     dbt
+      │
+  ┌───┴────┐
+  ▼        ▼
+stg_orders  →  silver_orders  →  alerts
+      │
+      ▼
+Streamlit Dashboard (local: full live view — metrics, alerts, orders)
 
 ## Current Pipeline (deployed)
 
@@ -52,21 +58,11 @@ verified working. The dashboard is publicly deployed.
             ▼
   No DuckDB access yet — shows "no database" message
 
-The deployed app has no connection to the local pipeline's data yet.
-This is architecturally expected at this phase, not a bug — the local
-pipeline and the cloud deployment are currently separate. Connecting
-them (e.g. via MotherDuck or a shared data store) is a planned later step.
-
 ---
 
 ## Planned Next Step
 
-Phase 3 will add:
-
-    DuckDB (bronze_orders)
-            │
-            ▼
-       dbt (silver layer, tests)
-            │
-            ▼
-       Alerts panel (anomaly/spike detection)
+Phase 4 will add:
+    - pytest coverage for producer/consumer
+    - Full pipeline stabilization testing under sustained load
+    - Airflow orchestration for scheduled dbt runs

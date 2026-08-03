@@ -116,3 +116,21 @@ Avoid making assumptions—verify with Git's own tools first.
 **Lesson:** Never mix nano and heredoc pastes in the same step — pick one method and stick to it for that edit.
 
 **Result:** dbt project set up and connected to the real pipeline database. Built two models: `stg_orders` (typed staging view) and `silver_orders` (materialized table with derived `order_total`). All 4 dbt tests pass (not_null + unique on order_id, both layers). silver_orders is materialized as a table (not view) since it will be queried repeatedly by the dashboard and Alerts panel.
+
+## Session — Phase 3.2 Complete (Alerts Panel)
+
+**Result:** Built a unified `alerts` dbt model combining three signal sources into one structured table (alert_id, timestamp, severity, region, alert_type, reason):
+  1. `data_quality` — surfaces Phase 2's rejected_events (schema/validation failures)
+  2. `high_value_order` — flags orders >3x their region's average total
+  3. `region_spike` — flags a region with order count >1.5x the cross-region average
+
+All fields tested with dbt (not_null, unique, accepted_values on severity/alert_type).
+Wired into Streamlit as a color-highlighted Alerts panel, verified locally
+against real data — correctly surfaced the one existing data_quality alert
+from Phase 2 testing. high_value_order and region_spike show zero alerts
+currently, which is expected given the small, low-variance test dataset —
+not a bug, the thresholds simply haven't been crossed yet.
+
+**Lesson:** dbt's `accepted_values` test syntax changed — values must now be
+nested under an `arguments:` key, not passed as top-level test config, to
+avoid a deprecation warning in dbt 1.12+.
