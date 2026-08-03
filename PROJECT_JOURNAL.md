@@ -100,3 +100,19 @@ Avoid making assumptions—verify with Git's own tools first.
 **Result:** First public deployment live and working correctly. Confirms the deployment pipeline itself (GitHub → Streamlit Cloud → live app) functions end-to-end. App correctly shows a "no database" message rather than crashing, since the cloud environment has no access to the local DuckDB file yet — an architecture gap to be addressed in a later phase, not a bug in this one.
 
 **Live URL:** https://streampulse.streamlit.app/
+
+## Session — Phase 3.1 Complete (dbt Silver Layer)
+
+**Problem:** `dbt init` created the project as a top-level `streampulse_dbt/` folder instead of inside the existing `dbt/` directory from Phase 0's structure.
+**Solution:** Moved all generated files into `dbt/` and removed the now-empty top-level folder.
+**Lesson:** dbt's init command always creates a new folder named after the project — plan to move it into your intended structure immediately, don't assume it lands where you want.
+
+**Problem:** `profiles.yml` defaulted to a brand-new `dev.duckdb` file instead of the real `data/orders.duckdb` where actual pipeline data lives.
+**Solution:** Manually edited the profile to point at `../data/orders.duckdb` (relative to the dbt/ folder), confirmed via `dbt debug`.
+**Lesson:** Always verify dbt's connection target explicitly with `dbt debug` before running anything — a wrong path fails silently by just querying/creating an empty database instead of erroring.
+
+**Problem:** Editing dbt_project.yml with nano while also trying to paste a heredoc block caused the literal `cat >`/`EOF` shell syntax to get written into the YAML file itself as text, breaking the YAML parser.
+**Solution:** Recreated the file using a heredoc pasted directly at the shell prompt, never inside an open editor.
+**Lesson:** Never mix nano and heredoc pastes in the same step — pick one method and stick to it for that edit.
+
+**Result:** dbt project set up and connected to the real pipeline database. Built two models: `stg_orders` (typed staging view) and `silver_orders` (materialized table with derived `order_total`). All 4 dbt tests pass (not_null + unique on order_id, both layers). silver_orders is materialized as a table (not view) since it will be queried repeatedly by the dashboard and Alerts panel.

@@ -1,0 +1,7 @@
+streampulse_dbt:
+  outputs:
+    dev:
+      type: duckdb
+      path: "../data/orders.duckdb"
+      threads: 1
+  target: dev
