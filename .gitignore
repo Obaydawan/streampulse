@@ -65,3 +65,4 @@ htmlcov/
 *.tmp
 *.bak
 .venv/
+airflow_home/

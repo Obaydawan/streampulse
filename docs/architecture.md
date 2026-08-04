@@ -2,10 +2,11 @@
 
 ## Current Status
 
-**Phase:** 3.2 – dbt Silver Layer + Alerts Panel (Complete)
+**Phase:** 4 – Testing, Stabilization, Orchestration (Complete)
 
-Full local pipeline verified end-to-end, including anomaly/data-quality
-alerting surfaced in the dashboard.
+Full local pipeline verified end-to-end, load-tested, and now orchestrated
+by Airflow. This is a legitimate standalone milestone even before the AI
+layer is added.
 
 **Live app:** https://streampulse.streamlit.app/
 
@@ -19,10 +20,13 @@ alerting surfaced in the dashboard.
 - Python producer publishing synthetic order events
 - Python consumer landing valid events into DuckDB (`bronze_orders`), idempotent on `order_id`
 - Invalid-event handling: `orders_dlq` topic + DuckDB `rejected_events` table
-- dbt project: `stg_orders` (staging view), `silver_orders` (materialized table, derived `order_total`)
-- dbt `alerts` model: unified data_quality + high_value_order + region_spike detection, all fields tested
-- Streamlit dashboard: metrics, color-coded Alerts panel, recent orders from silver layer
+- dbt project: `stg_orders`, `silver_orders`, `alerts` (all tested)
+- Streamlit dashboard: metrics, color-coded Alerts panel, recent orders
 - Public deployment on Streamlit Community Cloud
+- 19 pytest unit tests (producer + consumer), idempotency formally verified
+- Sustained load test: stable memory (~230MiB), ~1.15 events/sec throughput,
+  at-least-once delivery proven correct under real timing edge cases
+- Airflow (standalone-appropriate config) orchestrating dbt_run >> dbt_test
 
 ---
 
@@ -42,11 +46,9 @@ alerting surfaced in the dashboard.
   (DuckDB)        + rejected_events (DuckDB)
       │
       ▼
-     dbt
+     dbt (orchestrated by Airflow: dbt_run >> dbt_test)
       │
-  ┌───┴────┐
-  ▼        ▼
-stg_orders  →  silver_orders  →  alerts
+  stg_orders → silver_orders → alerts
       │
       ▼
 Streamlit Dashboard (local: full live view — metrics, alerts, orders)
@@ -62,7 +64,6 @@ Streamlit Dashboard (local: full live view — metrics, alerts, orders)
 
 ## Planned Next Step
 
-Phase 4 will add:
-    - pytest coverage for producer/consumer
-    - Full pipeline stabilization testing under sustained load
-    - Airflow orchestration for scheduled dbt runs
+Phase 5 will add:
+    Guardrailed AI query agent — SELECT-only, table allowlist,
+    SQL shown before execution, plain-English explanation of results

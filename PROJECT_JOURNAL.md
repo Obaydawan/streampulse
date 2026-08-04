@@ -200,3 +200,35 @@ the environment is actually healthy — always check for dependency-conflict
 warnings in the output, and re-verify existing functionality after adding
 any large new dependency like Airflow, even if the install itself appeared
 to succeed.
+
+## Session — Phase 4.3 Complete (Airflow Orchestration)
+
+**Result:** Set up Airflow 3.3.0 in standalone-appropriate configuration
+(SQLite metadata DB, no separate scheduler/worker/Postgres/Redis stack) —
+a deliberate scope decision to match the actual orchestration need: two
+sequential tasks, not a production multi-worker deployment. This differs
+intentionally from TransactSafe's full CeleryExecutor Airflow stack,
+which is appropriate there but would be over-engineering here.
+
+DAG (`streampulse_dbt_pipeline`) orchestrates exactly two tasks:
+dbt_run >> dbt_test. Nothing more, per project scope.
+
+**Problem:** `airflow dags list` repeatedly showed "No data found" even
+after the DAG file was correctly placed and pointed to.
+**Cause:** Airflow doesn't scan the dags_folder automatically on every
+CLI call — DAGs need to be explicitly serialized into the metadata DB
+first (`airflow dags reserialize`) before `dags list` will show them.
+**Lesson:** Don't assume "file exists in dags_folder" means "Airflow
+knows about it" — always force a reserialize after DAG changes when
+testing via CLI rather than a live scheduler.
+
+**Problem:** Default Airflow install loads ~80 example DAGs, cluttering
+every dags list/UI view.
+**Solution:** Set load_examples = False in airflow.cfg, then a full
+`airflow db reset` + `airflow db migrate` to clear the already-registered
+example DAGs out of the metadata DB.
+
+**Result:** Verified end-to-end via `airflow dags test streampulse_dbt_pipeline`
+— both dbt_run and dbt_test tasks completed successfully (state=success),
+DagRun marked successful. This proves Airflow can correctly orchestrate
+the real dbt project, not just a toy example.
