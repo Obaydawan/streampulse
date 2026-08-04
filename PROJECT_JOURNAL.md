@@ -134,3 +134,25 @@ not a bug, the thresholds simply haven't been crossed yet.
 **Lesson:** dbt's `accepted_values` test syntax changed — values must now be
 nested under an `arguments:` key, not passed as top-level test config, to
 avoid a deprecation warning in dbt 1.12+.
+
+## Session — Phase 4.1 Complete (pytest Coverage)
+
+**Result:** Added 19 unit tests covering producer and consumer logic.
+Producer tests (7): event generation correctness — required fields present,
+price/quantity in valid ranges, region/product from known lists, order_id
+uniqueness, deterministic product_id mapping.
+Consumer tests (12): schema validation (valid event, missing field, negative
+price, zero quantity, bad timestamp, empty string field), real-DuckDB table
+creation, event insertion, and — most importantly — a direct test proving
+the idempotent insert guarantee: producing the same order_id twice results
+in exactly one row, not two. DLQ interaction tested via mocked producer
+(no live broker needed for unit tests).
+
+**Approach:** Consumer tests use a real temporary DuckDB file per test
+(pytest's tmp_path fixture) rather than a mocked database, specifically so
+the actual SQL (schema creation, ON CONFLICT DO NOTHING logic) gets
+exercised — a mock would have let a real SQL bug pass silently.
+
+**Result:** All 19 tests pass. This formally verifies the core reliability
+guarantee stated in the original project plan: duplicate/at-least-once
+delivery is made harmless by idempotent inserts, not just assumed to work.
