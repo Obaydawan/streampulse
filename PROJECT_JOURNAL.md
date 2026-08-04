@@ -156,3 +156,27 @@ exercised — a mock would have let a real SQL bug pass silently.
 **Result:** All 19 tests pass. This formally verifies the core reliability
 guarantee stated in the original project plan: duplicate/at-least-once
 delivery is made harmless by idempotent inserts, not just assumed to work.
+
+## Session — Phase 4.2 Complete (Sustained Load Test)
+
+**Result:** Ran producer + consumer concurrently for 180s each, measuring
+memory, CPU, throughput, and disk growth throughout.
+- Throughput: ~1.15 events/sec sustained
+- Memory: stable at ~230-231 MiB (well under the 1GiB container cap), no
+  leak visible over the test window
+- 207 new events processed, 0 rejected, 0 lost
+- 9 events landed after the consumer's timer expired before the producer's
+  did — expected behavior given independent duration limits, not a bug;
+  correctly picked up on the very next consumer run, proving the
+  at-least-once + idempotent design handles this real scenario correctly
+- dbt full rebuild: under 9 seconds for all 3 models against 242 rows
+- Alerts model at scale: high_value_order rule triggered for the first
+  time (8 alerts) with real volume, confirming the detection logic works
+  correctly under load rather than only in small-sample testing
+
+**Lesson:** Running producer/consumer with independent duration timers can
+leave a small gap of unconsumed events when they don't start/stop in sync —
+this is expected and harmless given the at-least-once + idempotent insert
+design, but worth knowing rather than assuming timers must be synchronized.
+
+Full metrics: see phase4_2_metrics.txt

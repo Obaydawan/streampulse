@@ -1,0 +1,39 @@
+=== BASELINE ===
+Tue Aug  4 14:49:59 PKT 2026
+CONTAINER ID   NAME                   CPU %     MEM USAGE / LIMIT   MEM %     NET I/O        BLOCK I/O       PIDS
+8a4dfcd4ceb1   streampulse-redpanda   0.86%     230.2MiB / 1GiB     22.48%    1.7kB / 126B   263MB / 254kB   3
+209M	redpanda-data/
+2.1M	data/
+bronze_orders: 35
+--- Sample Tue Aug  4 14:51:19 PKT 2026 ---
+CONTAINER ID   NAME                   CPU %     MEM USAGE / LIMIT   MEM %     NET I/O          BLOCK I/O       PIDS
+8a4dfcd4ceb1   streampulse-redpanda   1.88%     230.4MiB / 1GiB     22.50%    104kB / 91.5kB   263MB / 893kB   3
+--- Sample Tue Aug  4 14:52:47 PKT 2026 ---
+CONTAINER ID   NAME                   CPU %     MEM USAGE / LIMIT   MEM %     NET I/O         BLOCK I/O        PIDS
+8a4dfcd4ceb1   streampulse-redpanda   2.22%     231.2MiB / 1GiB     22.58%    244kB / 212kB   265MB / 1.86MB   3
+--- Sample Tue Aug  4 14:54:04 PKT 2026 ---
+--- Sample Tue Aug  4 14:54:23 PKT 2026 ---
+CONTAINER ID   NAME                   CPU %     MEM USAGE / LIMIT   MEM %     NET I/O         BLOCK I/O        PIDS
+8a4dfcd4ceb1   streampulse-redpanda   1.12%     230.9MiB / 1GiB     22.55%    268kB / 229kB   266MB / 2.03MB   3
+=== POST-RUN ===
+Tue Aug  4 14:59:19 PKT 2026
+209M	redpanda-data/
+2.6M	data/
+bronze_orders: 233
+
+=== SUMMARY ===
+Producer: 207 events sent in 180s (~1.15 events/sec sustained)
+Consumer: 198 landed in its 180s window + 9 more picked up next run = 207 total processed, 0 rejected
+Final bronze_orders count: 242 (35 baseline + 207 new)
+Memory: 230.2 MiB -> 231.2 MiB peak -> 230.9 MiB end (stable, <1MiB drift over 3 min sustained dual-process load)
+CPU: 0.86% idle -> 2.22% peak under load
+Disk: redpanda-data/ unchanged at 209M (within 48h retention window, no growth issue yet)
+       data/ grew 2.1M -> 2.6M (proportional to new rows, no bloat)
+dbt run (3 models, full rebuild): 8.687s
+dbt test (8 tests): 6.247s
+Alerts at scale: 9 total (8 high_value_order, 1 data_quality) - high_value_order
+  rule triggered for the first time at this volume, confirming it works
+  correctly under real load, not just in isolated testing. region_spike
+  still did not trigger - expected, since random.choice() region
+  assignment doesn't produce enough skew to cross the 1.5x threshold
+  without deliberately biased test data.
