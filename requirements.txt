@@ -15,3 +15,15 @@ streamlit==1.48.1
 
 dbt-core==1.12.0
 dbt-duckdb==1.10.1
+
+# ==========================
+# Airflow (Phase 4.3)
+# Note: apache-airflow's installer upgrades pathspec and more-itertools
+# past versions dbt-core/metricflow require. Both are pinned explicitly
+# below to the versions dbt needs — always re-run dbt after any Airflow
+# install/upgrade to confirm no regression.
+# ==========================
+
+apache-airflow==3.3.0
+pathspec==1.0.4
+more-itertools==10.8.0

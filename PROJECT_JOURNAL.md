@@ -180,3 +180,23 @@ this is expected and harmless given the at-least-once + idempotent insert
 design, but worth knowing rather than assuming timers must be synchronized.
 
 Full metrics: see phase4_2_metrics.txt
+
+## Session — Phase 4.3 (Airflow Install)
+
+**Problem:** Installing apache-airflow==3.3.0 silently upgraded two shared
+dependencies — pathspec (0.9→1.1.1) and more-itertools (10.8.0→11.1.0) —
+past the version ranges dbt-core and metricflow require. pip printed
+dependency-conflict warnings but completed the install anyway rather than
+blocking it.
+**Cause:** pip's resolver doesn't always catch cross-package version
+conflicts introduced by a large dependency tree like Airflow's, even when
+it detects and reports them after the fact.
+**Solution:** Manually re-pinned pathspec and more-itertools to the ranges
+dbt-core/metricflow require, then re-ran the full verification suite (dbt
+run, dbt test, python compile checks, and all 19 pytest tests) to confirm
+nothing regressed before trusting the environment again.
+**Lesson:** Never assume a clean "Successfully installed" pip message means
+the environment is actually healthy — always check for dependency-conflict
+warnings in the output, and re-verify existing functionality after adding
+any large new dependency like Airflow, even if the install itself appeared
+to succeed.
