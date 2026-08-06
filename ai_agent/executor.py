@@ -5,25 +5,27 @@ from ai_agent.guardrails import validate_sql
 
 DB_PATH = "data/orders.duckdb"
 
-generator = SQLGenerator()
 
+def execute_question(question: str, generator: SQLGenerator | None = None) -> dict:
+    """
+    Generate SQL from a natural-language question, validate it, execute
+    it, and return the results.
 
-def execute_question(question: str) -> dict:
+    `generator` can be injected (e.g. a mock) for testing without hitting
+    the real Gemini API. If not provided, a real SQLGenerator is created
+    lazily — only when this function actually runs, not at import time.
     """
-    Generate SQL from a natural-language question,
-    validate it, execute it, and return the results.
-    """
+    if generator is None:
+        generator = SQLGenerator()
 
     sql = generator.generate_sql(question)
 
-    # Security checks
-    validate_sql(sql)
+    # Security checks — use the validated/normalized SQL, not the raw output.
+    sql = validate_sql(sql)
 
     con = duckdb.connect(DB_PATH, read_only=True)
-
     try:
         result = con.execute(sql)
-
         columns = [col[0] for col in result.description]
         rows = result.fetchall()
     finally:

@@ -232,3 +232,37 @@ example DAGs out of the metadata DB.
 — both dbt_run and dbt_test tasks completed successfully (state=success),
 DagRun marked successful. This proves Airflow can correctly orchestrate
 the real dbt project, not just a toy example.
+
+## Session — Phase 5 Progress (AI Agent Review + Testing)
+
+**Context:** AI agent core (Gemini integration, prompt engineering, guardrails,
+executor) was built in a separate session. This session's work: full code
+review of all AI agent files, one bug fix, and comprehensive pytest coverage.
+
+**Problem:** `executor.py` called `validate_sql(sql)` without capturing its
+return value, then executed the original unvalidated `sql` variable. Worked
+today only because validate_sql's current transformation (semicolon strip)
+is cosmetic — a future guardrail change that sanitizes/rewrites SQL would
+silently execute the wrong query.
+**Solution:** Changed to `sql = validate_sql(sql)`.
+
+**Problem:** `SQLGenerator()` was instantiated at module import time in
+executor.py, meaning every import created a real Gemini client and would
+fail immediately if GEMINI_API_KEY was missing — made the module hard to
+unit test without hitting the real API or requiring a key just to import.
+**Solution:** Added optional `generator` parameter to `execute_question()`
+for dependency injection, defaulting to lazy instantiation only when the
+function actually runs.
+
+**Result:** 25 new tests added covering guardrails.py (21 tests: allowed
+queries, disallowed tables including inside JOINs/subqueries, every
+forbidden SQL operation, PRAGMA, multi-statement injection, malformed
+input) and executor.py (4 tests, using a mocked generator so no real API
+calls are made during testing — protects free-tier quota). All tests pass.
+Confirmed the guardrail correctly catches PRAGMA statements as a side
+effect of the exp.Select isinstance check, not a gap in forbidden_types.
+
+**Lesson:** Discarding a validation function's return value is an easy,
+easy-to-miss bug when the function currently happens to be a no-op
+transformation — always capture and use validated/sanitized output
+explicitly, never assume "it works today" means "the contract is honored."
