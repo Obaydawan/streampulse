@@ -3,7 +3,7 @@
 # ==========================
 
 confluent-kafka==2.11.1
-duckdb==1.4.0
+duckdb==1.5.5
 faker==37.5.3
 python-dotenv==1.2.2
 pandas==2.3.1
