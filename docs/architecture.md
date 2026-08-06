@@ -2,11 +2,13 @@
 
 ## Current Status
 
-**Phase:** 4 – Testing, Stabilization, Orchestration (Complete)
+**Phase:** 5 – AI Analytics Assistant (Complete)
 
-Full local pipeline verified end-to-end, load-tested, and now orchestrated
-by Airflow. This is a legitimate standalone milestone even before the AI
-layer is added.
+StreamPulse now implements a complete end-to-end streaming analytics pipeline
+with a guardrailed AI SQL assistant. Real-time events are ingested through
+Redpanda, transformed with dbt, orchestrated by Airflow, visualized in
+Streamlit, and queried using Gemini-generated SQL protected by strict
+guardrails.
 
 **Live app:** https://streampulse.streamlit.app/
 
@@ -14,56 +16,176 @@ layer is added.
 
 ## Implemented
 
-- Git repository, folder structure, environment template
-- Docker Compose configuration for Redpanda (running, memory-capped at 1G)
-- `orders` topic (48h retention) and `orders_dlq` topic (48h retention)
-- Python producer publishing synthetic order events
-- Python consumer landing valid events into DuckDB (`bronze_orders`), idempotent on `order_id`
-- Invalid-event handling: `orders_dlq` topic + DuckDB `rejected_events` table
-- dbt project: `stg_orders`, `silver_orders`, `alerts` (all tested)
-- Streamlit dashboard: metrics, color-coded Alerts panel, recent orders
-- Public deployment on Streamlit Community Cloud
-- 19 pytest unit tests (producer + consumer), idempotency formally verified
-- Sustained load test: stable memory (~230MiB), ~1.15 events/sec throughput,
-  at-least-once delivery proven correct under real timing edge cases
-- Airflow (standalone-appropriate config) orchestrating dbt_run >> dbt_test
+- Git repository, folder structure, environment configuration
+- Docker Compose configuration for Redpanda (memory-capped)
+- `orders` and `orders_dlq` Kafka topics
+- Python producer generating synthetic e-commerce order events
+- Python consumer ingesting valid events into DuckDB (`bronze_orders`)
+- Invalid-event handling through DLQ and `rejected_events`
+- dbt transformation pipeline:
+  - `stg_orders`
+  - `silver_orders`
+  - `alerts`
+- Airflow DAG orchestrating:
+  - `dbt run`
+  - `dbt test`
+- Streamlit dashboard with:
+  - Live metrics
+  - Regional sales
+  - Alerts panel
+  - Recent orders
+- Public Streamlit deployment
+- Guardrailed AI SQL assistant powered by Gemini
+- SQL execution engine with read-only enforcement
+- SQL allowlist restricting access to:
+  - `silver_orders`
+  - `alerts`
+- SQL validation preventing:
+  - INSERT
+  - UPDATE
+  - DELETE
+  - DROP
+  - ALTER
+  - CREATE
+  - PRAGMA
+  - Multiple statements
+  - Access to Bronze or staging tables
+- Tableless fallback responses for unsupported questions
+- 45 automated pytest tests covering:
+  - Producer
+  - Consumer
+  - AI SQL generator
+  - SQL guardrails
+  - Executor
 
 ---
 
-## Current Pipeline (local)
+## Current Pipeline (Local)
 
-    Python Producer
-            │
-            ▼
-       Redpanda Topic (orders, 48h retention)
-            │
-            ▼
-       Python Consumer
-            │
-      ┌─────┴─────┐
-      ▼           ▼
-  bronze_orders   orders_dlq (invalid events)
-  (DuckDB)        + rejected_events (DuckDB)
-      │
-      ▼
-     dbt (orchestrated by Airflow: dbt_run >> dbt_test)
-      │
-  stg_orders → silver_orders → alerts
-      │
-      ▼
-Streamlit Dashboard (local: full live view — metrics, alerts, orders)
-
-## Current Pipeline (deployed)
-
-  Streamlit Dashboard (Streamlit Cloud)
-            │
-            ▼
-  No DuckDB access yet — shows "no database" message
+```
+              Python Producer
+                     │
+                     ▼
+          Redpanda Topic (orders)
+                     │
+                     ▼
+             Python Consumer
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+   bronze_orders          rejected_events
+       │                       ▲
+       │                       │
+       ▼                 orders_dlq
+      dbt
+       │
+       ▼
+stg_orders
+       │
+       ▼
+silver_orders
+       │
+       ▼
+alerts
+       │
+       ├───────────────► Streamlit Dashboard
+       │
+       ▼
+Guardrailed Gemini SQL Agent
+       │
+Generate SQL
+       │
+SQL Guardrails
+       │
+Execute SQL
+       │
+Return Results
+```
 
 ---
 
-## Planned Next Step
+## AI Query Flow
 
-Phase 5 will add:
-    Guardrailed AI query agent — SELECT-only, table allowlist,
-    SQL shown before execution, plain-English explanation of results
+```
+User Question
+      │
+      ▼
+ Gemini SQL Generation
+      │
+      ▼
+ SQL Guardrails
+      │
+      ├── Reject unsafe SQL
+      │
+      └── Allow safe SQL
+             │
+             ▼
+      DuckDB Execution
+             │
+             ▼
+      Results returned
+```
+
+---
+
+## Current Deployment
+
+### Local Environment
+
+Runs the complete streaming system:
+
+- Producer
+- Consumer
+- Redpanda
+- DuckDB
+- dbt
+- Airflow
+- Streamlit Dashboard
+- Gemini SQL Assistant
+
+### Streamlit Community Cloud
+
+Currently hosts the dashboard UI.
+
+The AI assistant can be deployed after configuring:
+
+- `GEMINI_API_KEY` as a Streamlit secret
+
+The dashboard currently does not connect to the local DuckDB database because
+the streaming pipeline runs on the local development machine.
+
+---
+
+## Validation Status
+
+✅ Producer validated
+
+✅ Consumer validated
+
+✅ dbt models validated
+
+✅ dbt tests passing
+
+✅ Airflow orchestration verified
+
+✅ Dashboard operational
+
+✅ Gemini integration verified
+
+✅ SQL generation verified
+
+✅ SQL execution verified
+
+✅ SQL guardrails verified
+
+✅ 45 automated tests passing
+
+---
+
+## Next Phase
+
+**Phase 6 – Analytics Copilot**
+
+The next phase adds an explanation layer that converts SQL query results into
+clear business insights using Gemini while remaining grounded strictly in the
+returned data and avoiding unsupported conclusions.
