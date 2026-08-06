@@ -59,7 +59,5 @@ def validate_sql(sql: str) -> str:
             f"Only {', '.join(ALLOWED_TABLES)} are queryable."
         )
 
-    if not referenced_tables:
-        raise GuardrailViolation("Query does not reference any known table.")
 
     return sql

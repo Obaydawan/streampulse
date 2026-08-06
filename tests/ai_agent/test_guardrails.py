@@ -135,3 +135,13 @@ def test_blocks_select_with_subquery_on_disallowed_table():
     sql = "SELECT * FROM silver_orders WHERE order_id IN (SELECT order_id FROM bronze_orders)"
     with pytest.raises(GuardrailViolation, match="disallowed table"):
         validate_sql(sql)
+
+
+def test_allows_tableless_select_fallback_message():
+    """
+    The prompt's designed fallback for unanswerable questions is a plain
+    literal SELECT with no FROM clause. This must be allowed through —
+    it can't touch any data, so it's safe by construction.
+    """
+    sql = "SELECT 'Unable to answer using available data.' AS message"
+    assert validate_sql(sql) == sql

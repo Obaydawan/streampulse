@@ -266,3 +266,31 @@ effect of the exp.Select isinstance check, not a gap in forbidden_types.
 easy-to-miss bug when the function currently happens to be a no-op
 transformation — always capture and use validated/sanitized output
 explicitly, never assume "it works today" means "the contract is honored."
+
+## Session — Phase 5 UI Complete (AI Chat Interface)
+
+**Problem:** The model's designed "I can't answer that" fallback is a
+tableless SELECT literal (no FROM clause). The guardrail correctly let it
+through, but the original error message ("Query does not reference any
+known table") displayed as a red warning — technically accurate but
+confusing, since this is a safe, intended behavior, not a security block.
+**Solution:** Removed the unnecessary "must reference at least one table"
+check from guardrails.py (a tableless SELECT can't touch any data, so it's
+safe by construction). Added a dedicated UI state in ai_chat.py that
+detects the fallback message specifically and displays it as a calm info
+box ("I don't have the data to answer that") rather than a warning.
+
+**Result:** Built streamlit_app/ai_chat.py — full chat interface showing
+generated SQL before/with results, a results table, graceful handling of
+three distinct outcomes: successful query, "can't answer this" fallback,
+and genuine guardrail block (bad/disallowed SQL). Verified all three paths
+live: "What's the average order value by region?" (real grouped results),
+"How many orders are there?" (242, matches known total), and "Show me
+everything from bronze_orders" (correctly declined without exposing raw
+data or looking like an error).
+
+**Lesson:** A safety check being technically correct isn't the same as
+being well-communicated — the guardrail blocking the fallback message
+was "working as designed" but the resulting UX looked like a bug. Worth
+distinguishing "the system correctly declined" from "the system errored"
+in user-facing messaging, even when both pass through similar code paths.
