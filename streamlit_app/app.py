@@ -107,7 +107,7 @@ with tab_dashboard:
                 color = "#5c1a1a" if row["severity"] == "warning" else "#1a3a5c"
                 return [f"background-color: {color}"] * len(row)
 
-            st.dataframe(alerts.style.apply(highlight_severity, axis=1), width="stretch")
+            st.dataframe(alerts.style.apply(highlight_severity, axis=1), use_container_width=True)
     else:
         st.info("Alerts model not yet built. Run `dbt run` in the `dbt/` folder.")
 
@@ -133,7 +133,7 @@ with tab_dashboard:
             """
         ).fetchdf()
 
-    st.dataframe(recent, width="stretch")
+    st.dataframe(recent, use_container_width=True)
     con.close()
 
 # ---------------------------------------------------------------------
@@ -194,7 +194,7 @@ with tab_ai:
             if entry["rows"]:
                 st.dataframe(
                     [dict(zip(entry["columns"], row)) for row in entry["rows"]],
-                    width="stretch",
+                    use_container_width=True,
                 )
             else:
                 st.info("Query ran successfully but returned no rows.")
