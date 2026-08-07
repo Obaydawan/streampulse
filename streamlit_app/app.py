@@ -44,11 +44,20 @@ st.set_page_config(page_title="StreamPulse", page_icon="📦", layout="wide")
 st.title("📦 StreamPulse")
 st.caption("Near-real-time e-commerce order analytics + AI query agent")
 
-if not MOTHERDUCK_TOKEN and not os.path.exists(DUCKDB_PATH):
+try:
+    _test_con = get_connection()
+    _test_con.close()
+    _db_available = True
+except Exception:
+    _db_available = False
+
+if not _db_available:
     st.warning(
-        f"No database found at `{DUCKDB_PATH}`, and no MotherDuck token "
-        "configured.\n\nThis is expected if neither the local pipeline "
-        "nor a cloud database sync has been set up in this environment."
+        "No database is currently reachable in this environment — neither "
+        "MotherDuck nor a local pipeline database.\n\nThis is expected on "
+        "the public deployment if MotherDuck's connection isn't available "
+        "from this environment and the local pipeline hasn't synced data "
+        "here."
     )
     st.stop()
 
