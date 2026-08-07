@@ -294,3 +294,41 @@ being well-communicated — the guardrail blocking the fallback message
 was "working as designed" but the resulting UX looked like a bug. Worth
 distinguishing "the system correctly declined" from "the system errored"
 in user-facing messaging, even when both pass through similar code paths.
+
+## Session — MotherDuck Cloud Sync Complete (Phase 5 Deployment)
+
+**Problem:** MotherDuck connection failed with "Invalid token or user" across
+every method tried (fresh tokens, env vars, connection strings, even
+browser-based auth with no token at all) despite a genuinely valid,
+active MotherDuck account (confirmed working in their web UI).
+**Cause:** DuckDB 1.4.0 was incompatible with MotherDuck's current server-side
+extension version — an infrastructure version mismatch, not a credentials
+or configuration error.
+**Solution:** Upgraded duckdb 1.4.0 -> 1.5.5 project-wide. Full regression
+suite (45 tests, dbt run + test) re-verified clean after the upgrade
+before trusting it.
+**Lesson:** When every authentication method fails identically regardless
+of the credential used, suspect the client library/extension version
+before assuming the credential itself is wrong — a systematic failure
+pattern across multiple independent auth paths points to infrastructure,
+not configuration.
+
+**Result:** Real pipeline data (bronze_orders, rejected_events) synced to
+MotherDuck. dbt run --target prod builds stg_orders/silver_orders/alerts
+directly in the cloud database from the synced data. app.py and
+executor.py both updated to prefer MotherDuck (via MOTHERDUCK_TOKEN) when
+available, falling back to the local file for local development.
+
+**Problem:** After wiring MOTHERDUCK_TOKEN into executor.py, the full test
+suite slowed from ~4s to ~23s — tests were silently making real network
+calls to MotherDuck instead of using the local file, since the token was
+present in the local .env.
+**Solution:** Added an injectable connection_factory parameter to
+execute_question(), same dependency-injection pattern already used for
+the SQL generator. Tests now explicitly force the local-file connection,
+staying fast and offline regardless of what's in the environment.
+**Lesson:** A "prefer cloud, fall back to local" connection strategy is
+correct for production code but dangerous for tests if not made
+explicitly overridable — environment-dependent test behavior is a subtle
+trap that can silently slow down or add network dependencies to a test
+suite that's supposed to be fast and isolated.

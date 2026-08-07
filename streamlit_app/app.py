@@ -21,17 +21,31 @@ from ai_agent.guardrails import GuardrailViolation
 load_dotenv()
 
 DUCKDB_PATH = os.getenv("DUCKDB_PATH", "data/orders.duckdb")
+MOTHERDUCK_TOKEN = os.getenv("MOTHERDUCK_TOKEN") or st.secrets.get("MOTHERDUCK_TOKEN", None)
 UNABLE_TO_ANSWER_MARKER = "unable to answer using available data"
+
+
+def get_connection(read_only: bool = True):
+    """
+    Prefer MotherDuck (cloud) if a token is available — this is what the
+    deployed Streamlit Cloud app uses, since it has no access to the
+    local pipeline's DuckDB file. Falls back to the local file for
+    local development, where the live pipeline actually writes.
+    """
+    if MOTHERDUCK_TOKEN:
+        return duckdb.connect(f"md:my_db?motherduck_token={MOTHERDUCK_TOKEN}", read_only=read_only)
+    return duckdb.connect(DUCKDB_PATH, read_only=read_only)
+
 
 st.set_page_config(page_title="StreamPulse", page_icon="📦", layout="wide")
 st.title("📦 StreamPulse")
 st.caption("Near-real-time e-commerce order analytics + AI query agent")
 
-if not os.path.exists(DUCKDB_PATH):
+if not MOTHERDUCK_TOKEN and not os.path.exists(DUCKDB_PATH):
     st.warning(
-        f"No database found at `{DUCKDB_PATH}`.\n\n"
-        "This is expected on the public deployment if the local pipeline "
-        "hasn't synced data to this environment."
+        f"No database found at `{DUCKDB_PATH}`, and no MotherDuck token "
+        "configured.\n\nThis is expected if neither the local pipeline "
+        "nor a cloud database sync has been set up in this environment."
     )
     st.stop()
 
@@ -41,7 +55,7 @@ tab_dashboard, tab_ai = st.tabs(["📊 Dashboard", "🤖 AI Query Agent"])
 # Dashboard tab
 # ---------------------------------------------------------------------
 with tab_dashboard:
-    con = duckdb.connect(DUCKDB_PATH, read_only=True)
+    con = get_connection()
     tables = {row[0] for row in con.execute("SHOW TABLES").fetchall()}
 
     col1, col2, col3 = st.columns(3)

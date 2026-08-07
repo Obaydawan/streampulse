@@ -4,4 +4,8 @@ streampulse_dbt:
       type: duckdb
       path: "../data/orders.duckdb"
       threads: 1
+    prod:
+      type: duckdb
+      path: "md:my_db?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      threads: 1
   target: dev
