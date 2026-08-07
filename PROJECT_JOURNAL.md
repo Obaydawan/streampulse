@@ -332,3 +332,38 @@ correct for production code but dangerous for tests if not made
 explicitly overridable — environment-dependent test behavior is a subtle
 trap that can silently slow down or add network dependencies to a test
 suite that's supposed to be fast and isolated.
+
+## Session — MotherDuck Cloud Deployment: Partial Success, Graceful Fallback
+
+**Problem:** After fixing the DuckDB/MotherDuck version incompatibility and
+confirming the connection worked reliably from the local machine (sync
+script, dbt --target prod, direct queries all succeeded), the deployed
+Streamlit Cloud app failed with a different error: "PERMISSION_DENIED,
+RPC 'CREATE_SLT'" when attempting the identical connection.
+**Investigation:** Ruled out read_only parameter mismatch (tested locally
+with read_only=True — succeeded). Ruled out token issues (same token
+works locally). Root cause is most likely infrastructure-specific to
+MotherCuck's free-tier account/session provisioning when connecting from
+Streamlit Cloud's environment (possible region mismatch, IP-based
+restriction, or free-tier session limits on external/service-based
+connections) — not diagnosable further from the client side without
+MotherDuck's server-side logs.
+**Decision:** Rather than pursue MotherDuck support (uncertain timeline,
+uncertain resolution, diminishing returns for a portfolio project), added
+a try/except fallback in both app.py and executor.py's get_connection().
+The app now attempts MotherDuck first, and gracefully falls back to the
+local-file behavior (including the honest "no database found" message)
+if the cloud connection fails for any reason, rather than crashing.
+
+**Result:** MotherDuck sync and cloud dbt run remain genuinely working and
+demonstrable locally — this is real, working infrastructure, just not
+currently reachable from the specific Streamlit Cloud environment. The
+deployed app degrades gracefully instead of showing a raw stack trace.
+
+**Lesson:** Not every integration needs to be pushed to full production
+resolution to be worth building — the local MotherDuck pipeline (sync +
+cloud dbt transforms) is real, tested, working engineering, and the
+graceful-degradation pattern itself is a legitimate, portfolio-worthy
+design decision. Knowing when to stop debugging a third-party service
+issue and ship a resilient fallback instead is itself an engineering
+judgment call worth documenting, not a failure to hide.

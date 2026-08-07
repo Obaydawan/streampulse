@@ -11,14 +11,16 @@ MOTHERDUCK_TOKEN = os.getenv("MOTHERDUCK_TOKEN")
 
 def get_connection(read_only: bool = True):
     """
-    Prefer MotherDuck (cloud) if a token is available — this is what the
-    deployed Streamlit Cloud app uses, since it has no access to the
-    local pipeline's DuckDB file. Falls back to the local file for local
-    development, where the live pipeline actually writes. Streamlit Cloud
-    injects secrets as environment variables, so os.getenv works there too.
+    Prefer MotherDuck (cloud) if a token is available. Falls back to the
+    local file if MotherDuck is unavailable or the connection fails for
+    any reason — the agent should degrade gracefully, not crash, on a
+    cloud dependency it doesn't control.
     """
     if MOTHERDUCK_TOKEN:
-        return duckdb.connect(f"md:my_db?motherduck_token={MOTHERDUCK_TOKEN}", read_only=read_only)
+        try:
+            return duckdb.connect(f"md:my_db?motherduck_token={MOTHERDUCK_TOKEN}", read_only=read_only)
+        except Exception:
+            pass
     return duckdb.connect(DB_PATH, read_only=read_only)
 
 
