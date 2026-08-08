@@ -367,3 +367,34 @@ graceful-degradation pattern itself is a legitimate, portfolio-worthy
 design decision. Knowing when to stop debugging a third-party service
 issue and ship a resilient fallback instead is itself an engineering
 judgment call worth documenting, not a failure to hide.
+
+## Session — Phase 6 Complete (Analytics Copilot)
+
+**Result:** Added ai_agent/explain.py — after a successful query, a second
+Gemini call generates a 1-3 sentence plain-English summary of the results,
+grounded strictly in the returned data. The prompt explicitly forbids
+causal language ("because", "due to") unless the results themselves
+contain a column that supports it, preventing the model from inventing
+explanations the data doesn't support.
+
+Design decisions:
+- Empty results short-circuit before calling Gemini at all (nothing to
+  explain, no reason to spend an API call)
+- Large result sets are capped at 30 rows in the prompt, with an explicit
+  note of the true total row count, to keep prompts small and cheap
+- The explanation is generated once per query (at insert-into-history
+  time), not regenerated on every Streamlit re-render
+- If explanation generation fails for any reason, the app falls back to
+  showing results without a summary rather than breaking the whole
+  response — the explanation is an enhancement, not a dependency
+
+**Testing:** 5 new tests using a mocked GeminiClient — verified the
+truncation logic, the empty-result short-circuit (and that it correctly
+avoids an unnecessary API call), response whitespace handling, and that
+the correct data is actually passed into the prompt. All 50 project tests
+pass.
+
+**Verified live:** "What's total sales by region?" produced a correct,
+data-grounded summary ranking all five regions accurately with real
+numbers, no invented causes — confirming the guardrail-style prompt
+design works in practice, not just in isolated tests.

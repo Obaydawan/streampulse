@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from ai_agent.executor import execute_question
 from ai_agent.guardrails import GuardrailViolation
+from ai_agent.explain import explain_results
 
 load_dotenv()
 
@@ -167,7 +168,19 @@ with tab_ai:
                         "sql": result["sql"],
                     })
                 else:
-                    st.session_state.chat_history.insert(0, {"status": "success", **result})
+                    with st.spinner("Summarizing results..."):
+                        try:
+                            summary = explain_results(
+                                question=question,
+                                sql=result["sql"],
+                                columns=result["columns"],
+                                rows=result["rows"],
+                            )
+                        except Exception:
+                            summary = None
+                    st.session_state.chat_history.insert(
+                        0, {"status": "success", "summary": summary, **result}
+                    )
             except GuardrailViolation as e:
                 st.session_state.chat_history.insert(0, {
                     "status": "blocked",
@@ -196,6 +209,8 @@ with tab_ai:
                     [dict(zip(entry["columns"], row)) for row in entry["rows"]],
                     use_container_width=True,
                 )
+                if entry.get("summary"):
+                    st.markdown(f"💡 {entry['summary']}")
             else:
                 st.info("Query ran successfully but returned no rows.")
 
