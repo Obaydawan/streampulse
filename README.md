@@ -48,7 +48,7 @@ Local development runs against a local DuckDB file. The deployed dashboard reads
 
 ## Stack
 
-Redpanda, Python, DuckDB, MotherDuck, dbt, Airflow, Streamlit, Gemini, sqlglot, pytest, Docker
+SQL,Redpanda, Python, DuckDB, MotherDuck, dbt, Airflow, Streamlit, Gemini, sqlglot, pytest, Docker
 
 ## The AI agent
 
