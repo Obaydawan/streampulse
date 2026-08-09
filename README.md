@@ -4,7 +4,7 @@ Near-real-time order analytics pipeline with a natural-language query agent. Eve
 
 **Live app:** [streampulse.streamlit.app](https://streampulse.streamlit.app/)
 
-## What it does
+## What STREAMPULSE does
 
 - Streams synthetic e-commerce order events through Redpanda
 - Lands them in DuckDB with schema validation and idempotent writes — duplicate deliveries never produce duplicate rows
