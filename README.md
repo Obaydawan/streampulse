@@ -6,6 +6,20 @@ Near-real-time order analytics pipeline with a natural-language query agent. Eve
 
 ![StreamPulse architecture](docs/diagrams/architecture-diagram.svg)
 
+## Screenshots
+
+### Dashboard
+
+![StreamPulse Dashboard](docs/screenshots/dashboard.png)
+
+### Orders
+
+![StreamPulse Orders](docs/screenshots/orders.png)
+
+### AI Query Agent
+
+![StreamPulse AI Query Agent](docs/screenshots/ai-agent.png)
+
 ## What Project does
 
 - Streams synthetic e-commerce order events through Redpanda
