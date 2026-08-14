@@ -74,7 +74,7 @@ Every generated query is parsed, not pattern-matched. sqlglot builds a real synt
 
 Nothing runs silently. The SQL is shown to the user alongside the results, every time.
 
-Results get explained, not embellished. A second model call summarizes what the data shows, explicitly barred from inventing a "why" the data doesn't support. "Europe had the highest sales" is fine. "Europe had the highest sales due to strong regional demand" is not — nothing in the results says that.
+Results get explained, not decorated. A second model call summarizes what the data shows, explicitly barred from inventing a "why" the data doesn't support. "Europe had the highest sales" is fine. "Europe had the highest sales due to strong regional demand" is not — nothing in the results says that.
 
 If a question falls outside what the two allowed tables can answer, the agent says so directly instead of guessing.
 
