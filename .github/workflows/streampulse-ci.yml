@@ -9,6 +9,7 @@ on:
 jobs:
   pipeline-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repo
@@ -28,8 +29,21 @@ jobs:
       - name: Start Redpanda
         run: docker compose up -d
 
-      - name: Wait for Redpanda to be ready
-        run: sleep 15
+      - name: Wait for Redpanda to accept connections
+        run: |
+          echo "Waiting for port 9092..."
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/9092) >/dev/null 2>&1; then
+              echo "Port 9092 is open after ${i} attempts."
+              exit 0
+            fi
+            echo "Attempt ${i}/30: not ready yet, waiting 2s..."
+            sleep 2
+          done
+          echo "Redpanda never became reachable. Dumping diagnostics:"
+          docker compose ps
+          docker compose logs redpanda --tail 100
+          exit 1
 
       - name: Produce sample orders
         run: python -m producer.produce_orders --max-events 50
