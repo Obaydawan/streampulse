@@ -45,6 +45,12 @@ jobs:
           docker compose logs redpanda --tail 100
           exit 1
 
+      - name: Dump Redpanda status before producing
+        if: always()
+        run: |
+          docker compose ps
+          docker compose logs redpanda --tail 100
+
       - name: Produce sample orders
         run: python -m producer.produce_orders --max-events 50
 
