@@ -1,0 +1,53 @@
+name: streampulse CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pipeline-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create .env from example
+        run: cp .env.example .env
+
+      - name: Start Redpanda
+        run: docker compose up -d
+
+      - name: Wait for Redpanda to be ready
+        run: sleep 15
+
+      - name: Produce sample orders
+        run: python -m producer.produce_orders --max-events 50
+
+      - name: Consume orders into DuckDB
+        run: python -m consumer.consume_orders --max-events 50
+
+      - name: Run dbt models
+        run: dbt run --profiles-dir .
+        working-directory: dbt
+
+      - name: Run dbt tests
+        run: dbt test --profiles-dir .
+        working-directory: dbt
+
+      - name: Run pytest suite
+        run: pytest tests/
+
+      - name: Tear down containers
+        if: always()
+        run: docker compose down
