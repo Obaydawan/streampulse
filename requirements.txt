@@ -28,3 +28,4 @@ apache-airflow==3.3.0
 pathspec==1.0.4
 more-itertools==10.8.0
 google-genai
+sqlglot
