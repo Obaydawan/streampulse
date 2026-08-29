@@ -1,5 +1,7 @@
 # StreamPulse
 
+![CI](https://github.com/Obaydawan/streampulse/actions/workflows/streampulse-ci.yml/badge.svg)
+
 Near-real-time order analytics pipeline with a natural-language query agent. Events flow through a Kafka-compatible stream into a warehouse, get transformed with dbt, and surface on a live dashboard — alongside an AI agent that answers questions about the data in plain English, with SQL you can see before it runs.
 
 **Live app:** [streampulse.streamlit.app](https://streampulse.streamlit.app/)
