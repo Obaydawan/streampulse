@@ -8,7 +8,7 @@ Near-real-time order analytics pipeline with a natural-language query agent. Eve
 
 ![StreamPulse architecture](docs/diagrams/architecture-diagram.svg)
 
-## creenshots
+## Screenshots
 
 ### Dashboard
 
