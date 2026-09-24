@@ -1,4 +1,4 @@
-# StreamPulse:
+# StreamPulse
 
 ![CI](https://github.com/Obaydawan/streampulse/actions/workflows/streampulse-ci.yml/badge.svg)
 
